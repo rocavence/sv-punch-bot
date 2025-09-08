@@ -20,7 +20,6 @@ from app.schemas.attendance import (
 )
 from app.utils.auth import get_current_active_user, get_current_admin_user
 from app.utils.validators import validate_pagination_params, DataValidator
-from app.utils.datetime_utils import convert_timezone, get_user_timezone_datetime
 from app.services.attendance_service import AttendanceService
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
