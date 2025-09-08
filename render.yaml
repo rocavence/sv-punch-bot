@@ -1,0 +1,100 @@
+# Render.com 部署配置文件
+services:
+  # Web 服務
+  - type: web
+    name: punch-bot
+    env: python
+    plan: starter
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    
+    # 環境變數
+    envVars:
+      # 應用配置
+      - key: DEBUG
+        value: false
+      - key: TIMEZONE
+        value: Asia/Taipei
+      - key: DEFAULT_WORK_HOURS
+        value: 8
+      - key: AUTO_PUNCH_TIMEOUT_MINUTES
+        value: 30
+      
+      # JWT 配置
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      
+      # 通知配置
+      - key: NOTIFICATION_ENABLED
+        value: true
+      - key: DAILY_REMINDER_TIME
+        value: "18:00"
+      - key: WEEKLY_REPORT_DAY
+        value: friday
+      
+      # 文件上傳配置
+      - key: MAX_FILE_SIZE
+        value: 10485760
+      - key: UPLOAD_FOLDER
+        value: uploads
+      
+      # CORS 配置
+      - key: ALLOWED_ORIGINS
+        value: https://punch-bot.onrender.com
+      
+      # 日誌配置
+      - key: LOG_LEVEL
+        value: INFO
+      - key: LOG_FORMAT
+        value: json
+      
+      # 資料庫連接（從資料庫服務取得）
+      - key: DATABASE_URL
+        fromDatabase:
+          name: punch-bot-db
+          property: connectionString
+      
+      # 需要手動設定的機密變數
+      - key: SLACK_BOT_TOKEN
+        sync: false  # 需要在 Render Dashboard 手動設定
+      - key: SLACK_SIGNING_SECRET
+        sync: false
+      - key: SLACK_APP_TOKEN
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: REDIS_URL
+        sync: false  # 可選，如果使用 Redis 的話
+
+  # PostgreSQL 資料庫
+  - type: pserv
+    name: punch-bot-db
+    env: postgresql
+    plan: starter
+    region: singapore
+    databaseName: punchbot
+    databaseUser: punchbot
+    
+    # 資料庫配置
+    ipAllowList: []  # 允許所有 IP，Render 會自動管理
+    
+  # Redis 快取服務（可選）
+  - type: redis
+    name: punch-bot-redis
+    plan: starter
+    region: singapore
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+# 預設資料庫初始化（需要手動執行）
+# 部署完成後執行：
+# 1. alembic upgrade head
+# 2. python -c "from app.database import init_db; init_db()"

@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}儀表板 - Punch Bot 管理介面{% endblock %}
+
+{% block page_title %}儀表板{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-sm btn-outline-secondary" onclick="refreshStats()">
+    <i class="bi bi-arrow-clockwise me-1"></i>重新整理
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            總用戶數
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalUsers">
+                            {{ stats.total_users }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-people fs-2 text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            今日出勤
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="presentCount">
+                            {{ stats.present_count }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-check-circle fs-2 text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            已完成工作
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="completedCount">
+                            {{ stats.completed_count }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-clock-history fs-2 text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            異常記錄
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="anomalyCount">
+                            {{ stats.anomaly_count }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-exclamation-triangle fs-2 text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Weekly Trends Chart -->
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-graph-up me-2"></i>本週打卡趨勢
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-area">
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Summary -->
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-calendar-day me-2"></i>今日摘要
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <div class="border-end">
+                            <div class="h4 text-success">{{ stats.present_count }}</div>
+                            <small class="text-muted">已打卡進入</small>
+                        </div>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div class="h4 text-info">{{ stats.completed_count }}</div>
+                        <small class="text-muted">已完成工作</small>
+                    </div>
+                </div>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <div class="h4 text-warning">{{ stats.absent_count }}</div>
+                            <small class="text-muted">尚未出勤</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="h4 text-danger">{{ stats.anomaly_count }}</div>
+                        <small class="text-muted">異常記錄</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pending Actions -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-list-task me-2"></i>待處理事項
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    {% if stats.pending_leaves > 0 %}
+                    <a href="/admin/leaves" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        待審核休假申請
+                        <span class="badge bg-warning rounded-pill">{{ stats.pending_leaves }}</span>
+                    </a>
+                    {% endif %}
+                    
+                    {% if stats.anomaly_count > 0 %}
+                    <a href="/admin/attendance/anomalies" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        異常打卡記錄
+                        <span class="badge bg-danger rounded-pill">{{ stats.anomaly_count }}</span>
+                    </a>
+                    {% endif %}
+                    
+                    {% if stats.pending_leaves == 0 and stats.anomaly_count == 0 %}
+                    <div class="list-group-item text-center text-muted">
+                        <i class="bi bi-check-circle me-2"></i>
+                        暫無待處理事項
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Anomaly Users Alert -->
+{% if anomaly_users %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4 border-left-warning">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>異常打卡提醒
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning" role="alert">
+                    <strong>以下用戶今日已打卡進入但尚未打卡離開：</strong>
+                </div>
+                <div class="row">
+                    {% for user in anomaly_users %}
+                    <div class="col-md-4 col-sm-6 mb-2">
+                        <span class="badge bg-warning text-dark me-2">{{ user.department or '未分組' }}</span>
+                        <a href="/admin/attendance/user/{{ user.id }}" class="text-decoration-none">
+                            {{ user.internal_real_name }}
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Recent Records -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-clock-history me-2"></i>最近打卡記錄
+                </h6>
+                <a href="/admin/attendance" class="btn btn-sm btn-primary">查看全部</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>用戶</th>
+                                <th>部門</th>
+                                <th>動作</th>
+                                <th>時間</th>
+                                <th>類型</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in recent_records %}
+                            <tr>
+                                <td>
+                                    <a href="/admin/users/{{ record.user.id }}" class="text-decoration-none">
+                                        {{ record.user.internal_real_name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ record.user.department or '未分組' }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge {% if record.action == 'in' %}bg-success{% elif record.action == 'out' %}bg-info{% elif record.action == 'break' %}bg-warning{% else %}bg-primary{% endif %}">
+                                        {% if record.action == 'in' %}進入
+                                        {% elif record.action == 'out' %}離開
+                                        {% elif record.action == 'break' %}休息
+                                        {% else %}回來
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td>{{ record.timestamp.strftime('%m/%d %H:%M') }}</td>
+                                <td>
+                                    {% if record.is_auto %}
+                                        <i class="bi bi-robot text-warning" title="自動打卡"></i>
+                                    {% else %}
+                                        <i class="bi bi-person text-success" title="手動打卡"></i>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">暫無記錄</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', path='/js/dashboard.js') }}"></script>
+<script>
+// 初始化週統計圖表
+const weekData = {{ week_stats | tojson }};
+initWeeklyChart(weekData);
+
+// 定期更新統計數據
+setInterval(refreshStats, 30000); // 每30秒更新一次
+</script>
+{% endblock %}

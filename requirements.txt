@@ -1,0 +1,57 @@
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Database
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+alembic==1.13.0
+
+# Slack SDK
+slack-bolt==1.18.0
+slack-sdk==3.26.1
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
+# Validation & Serialization
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Scheduling
+APScheduler==3.10.4
+
+# Date & Time
+python-dateutil==2.8.2
+pytz==2023.3
+
+# HTTP & Requests
+httpx==0.25.2
+requests==2.31.0
+
+# Environment & Configuration
+python-dotenv==1.0.0
+
+# Data Processing
+pandas==2.1.4
+openpyxl==3.1.2
+
+# Utilities
+click==8.1.7
+typing-extensions==4.8.0
+
+# Development & Testing (optional, can be moved to dev-requirements.txt)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-mock==3.12.0
+
+# Logging & Monitoring
+structlog==23.2.0
+
+# File handling
+aiofiles==23.2.0
+
+# Redis (optional, for caching)
+redis==5.0.1
