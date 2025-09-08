@@ -158,12 +158,26 @@ async def root():
 # Include API routes
 from app.config import settings
 
-# Initialize multi-workspace Slack bot
-slack_bot = get_multi_workspace_bot()
-slack_app = slack_bot.start()
+# Initialize multi-workspace Slack bot (safely handle initialization errors)
+slack_bot = None
+slack_app = None
+slack_handler = None
 
-# Create Slack request handler for FastAPI
-slack_handler = SlackRequestHandler(slack_app)
+try:
+    slack_bot = get_multi_workspace_bot()
+    slack_app = slack_bot.start()
+    
+    # Create Slack request handler for FastAPI
+    if slack_app:
+        slack_handler = SlackRequestHandler(slack_app)
+        logger.info("Slack Bot initialized successfully")
+    else:
+        logger.warning("Slack Bot initialization returned None")
+        
+except Exception as e:
+    logger.error(f"Failed to initialize Slack Bot: {e}")
+    logger.info("Application will continue without Slack Bot functionality")
+    # Application can still run for OAuth setup and web interface
 
 # Include OAuth routes for Slack App installation
 app.include_router(
@@ -200,11 +214,17 @@ app.include_router(
 @app.post("/slack/events")
 async def slack_events(req: Request):
     """Handle Slack events"""
+    if not slack_handler:
+        logger.warning("Slack event received but handler not initialized")
+        raise HTTPException(status_code=503, detail="Slack Bot not available")
     return await slack_handler.handle(req)
 
 @app.post("/slack/commands") 
 async def slack_commands(req: Request):
     """Handle Slack slash commands"""
+    if not slack_handler:
+        logger.warning("Slack command received but handler not initialized")
+        raise HTTPException(status_code=503, detail="Slack Bot not available")
     return await slack_handler.handle(req)
 
 # Include web routes

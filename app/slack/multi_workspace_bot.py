@@ -33,11 +33,15 @@ class MultiWorkspaceSlackBot:
         # 工作區快取
         self.workspaces: Dict[str, dict] = {}
         
-        # 初始化 Slack App (無預設 token)
+        # 初始化 Slack App，使用虛擬 token 或環境變數
+        # 在多工作區模式下，實際的 token 來自動態解析
+        dummy_token = os.environ.get("SLACK_BOT_TOKEN", "xoxb-dummy-token-for-multi-workspace")
+        
         self.app = App(
+            token=dummy_token,
             signing_secret=self.signing_secret,
             # 使用動態 token 驗證
-            token_verification_enabled=True,
+            token_verification_enabled=False,  # 停用預設驗證，使用自訂邏輯
             process_before_response=True
         )
         
