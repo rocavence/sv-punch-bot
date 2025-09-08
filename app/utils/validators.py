@@ -238,3 +238,134 @@ def validate_data_types(data: dict, field_types: dict) -> list:
                 type_errors.append(f"{field} 應該是 {expected_type.__name__} 類型")
     
     return type_errors
+
+
+def validate_pagination_params(page: int, page_size: int) -> bool:
+    """驗證分頁參數"""
+    if page < 1 or page_size < 1:
+        return False
+    if page_size > 100:  # 限制每頁最大數量
+        return False
+    return True
+
+
+def validate_request_data(data: dict, required_fields: list = None, max_length: dict = None) -> list:
+    """驗證請求資料"""
+    errors = []
+    
+    # 檢查必填欄位
+    if required_fields:
+        missing = validate_required_fields(data, required_fields)
+        if missing:
+            errors.extend([f"缺少必填欄位: {field}" for field in missing])
+    
+    # 檢查欄位長度
+    if max_length:
+        for field, max_len in max_length.items():
+            if field in data and data[field] and len(str(data[field])) > max_len:
+                errors.append(f"{field} 長度超過限制 ({max_len})")
+    
+    return errors
+
+
+class DataValidator:
+    """資料驗證器"""
+    
+    def __init__(self):
+        pass
+    
+    def validate_user_data(self, user_data: dict) -> tuple[bool, list]:
+        """驗證用戶資料"""
+        errors = []
+        
+        # 檢查 Slack User ID
+        if 'slack_user_id' in user_data:
+            if not validate_slack_user_id(user_data['slack_user_id']):
+                errors.append("Slack 用戶 ID 格式錯誤")
+        
+        # 檢查 Email
+        if 'slack_email' in user_data and user_data['slack_email']:
+            if not validate_email(user_data['slack_email']):
+                errors.append("Email 格式錯誤")
+        
+        # 檢查真實姓名
+        if 'internal_real_name' in user_data:
+            if not validate_real_name(user_data['internal_real_name']):
+                errors.append("真實姓名格式錯誤")
+        
+        # 檢查部門
+        if 'department' in user_data and user_data['department']:
+            if not validate_department_name(user_data['department']):
+                errors.append("部門名稱格式錯誤")
+        
+        # 檢查工作時數
+        if 'standard_hours' in user_data:
+            if not validate_work_hours(user_data['standard_hours']):
+                errors.append("工作時數必須在 1-24 之間")
+        
+        # 檢查時區
+        if 'timezone' in user_data and user_data['timezone']:
+            if not validate_timezone(user_data['timezone']):
+                errors.append("時區格式錯誤")
+        
+        # 檢查角色
+        if 'role' in user_data and user_data['role']:
+            if not validate_user_role(user_data['role']):
+                errors.append("用戶角色錯誤")
+        
+        return len(errors) == 0, errors
+    
+    def validate_attendance_data(self, attendance_data: dict) -> tuple[bool, list]:
+        """驗證打卡資料"""
+        errors = []
+        
+        # 檢查動作
+        if 'action' in attendance_data:
+            if not validate_attendance_action(attendance_data['action']):
+                errors.append("打卡動作錯誤")
+        
+        # 檢查備註長度
+        if 'note' in attendance_data:
+            if not validate_note_length(attendance_data['note']):
+                errors.append("備註長度超過限制")
+        
+        return len(errors) == 0, errors
+
+
+class CSVValidator:
+    """CSV 檔案驗證器"""
+    
+    def __init__(self):
+        self.data_validator = DataValidator()
+    
+    def validate_csv_file(self, csv_content: str) -> tuple[bool, list, list]:
+        """驗證 CSV 檔案內容"""
+        errors = []
+        valid_rows = []
+        
+        try:
+            reader = csv.DictReader(io.StringIO(csv_content))
+            
+            # 檢查必要欄位
+            required_fields = ['slack_user_id', 'internal_real_name']
+            if not all(field in reader.fieldnames for field in required_fields):
+                missing_fields = [field for field in required_fields if field not in reader.fieldnames]
+                errors.append(f"CSV 缺少必要欄位: {', '.join(missing_fields)}")
+                return False, errors, []
+            
+            for row_num, row in enumerate(reader, start=2):  # 從第2行開始 (第1行是標題)
+                # 清理資料
+                cleaned_row = {k: sanitize_input(v) if v else v for k, v in row.items()}
+                
+                # 驗證這一行資料
+                is_valid, row_errors = self.data_validator.validate_user_data(cleaned_row)
+                
+                if not is_valid:
+                    errors.extend([f"第{row_num}行 - {error}" for error in row_errors])
+                else:
+                    valid_rows.append(cleaned_row)
+        
+        except Exception as e:
+            errors.append(f"CSV 解析錯誤: {str(e)}")
+        
+        return len(errors) == 0, errors, valid_rows
