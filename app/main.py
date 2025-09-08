@@ -23,8 +23,9 @@ from app.api import auth, users as api_users, attendance as api_attendance, repo
 # Import web routes  
 from app.web.routes import dashboard, users, attendance as attendance_routes, reports
 
-# Import multi-workspace Slack bot
+# Import Slack bots
 from app.slack.multi_workspace_bot import get_multi_workspace_bot
+from app.slack.minimal_bot import get_minimal_bot
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -158,26 +159,37 @@ async def root():
 # Include API routes
 from app.config import settings
 
-# Initialize multi-workspace Slack bot (safely handle initialization errors)
+# Initialize Slack bot with fallback strategy
 slack_bot = None
 slack_app = None
 slack_handler = None
 
 try:
+    # First try to initialize the full multi-workspace bot
+    logger.info("Attempting to initialize MultiWorkspaceSlackBot...")
     slack_bot = get_multi_workspace_bot()
     slack_app = slack_bot.start()
     
     # Create Slack request handler for FastAPI
     if slack_app:
         slack_handler = SlackRequestHandler(slack_app)
-        logger.info("Slack Bot initialized successfully")
+        logger.info("MultiWorkspaceSlackBot initialized successfully")
     else:
-        logger.warning("Slack Bot initialization returned None")
+        logger.warning("MultiWorkspaceSlackBot returned None")
         
 except Exception as e:
-    logger.error(f"Failed to initialize Slack Bot: {e}")
-    logger.info("Application will continue without Slack Bot functionality")
-    # Application can still run for OAuth setup and web interface
+    logger.error(f"Failed to initialize MultiWorkspaceSlackBot: {e}")
+    logger.info("Falling back to MinimalSlackBot for OAuth setup")
+    
+    try:
+        # Fallback to minimal bot that doesn't require Slack tokens
+        slack_bot = get_minimal_bot()
+        slack_app = None  # Minimal bot doesn't provide a Slack app
+        slack_handler = None
+        logger.info("MinimalSlackBot initialized successfully - OAuth flow available")
+    except Exception as e2:
+        logger.error(f"Failed to initialize MinimalSlackBot: {e2}")
+        logger.info("Application will continue without any Slack functionality")
 
 # Include OAuth routes for Slack App installation
 app.include_router(
