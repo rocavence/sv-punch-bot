@@ -19,8 +19,9 @@ python-multipart==0.0.6
 itsdangerous==2.1.2
 
 # Validation & Serialization
-pydantic==2.5.0
+pydantic[email]==2.5.0
 pydantic-settings==2.1.0
+email-validator==2.1.0
 
 # Scheduling
 APScheduler==3.10.4
