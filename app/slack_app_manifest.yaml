@@ -1,0 +1,61 @@
+display_information:
+  name: Punch Bot
+  description: 智能打卡機器人 - 支援混合辦公制度的團隊打卡管理系統
+  background_color: "#4A154B"
+  long_description: |
+    Punch Bot 是專為現代團隊設計的智能打卡機器人。支援混合辦公制度，提供完整的打卡管理、休假申請、工時統計等功能。
+    
+    主要功能：
+    • 簡單打卡指令 (/punch in/out/break/back)
+    • 智能提醒 (上下班、8小時工作提醒)
+    • 休假管理 (/punch ooo)
+    • 工時統計和報表
+    • Web 管理介面
+    
+    安裝後立即可用，無需額外設定！
+
+features:
+  app_home:
+    home_tab_enabled: true
+    messages_tab_enabled: false
+    messages_tab_read_only_enabled: false
+  bot_user:
+    display_name: Punch Bot
+    always_online: true
+  slash_commands:
+    - command: /punch
+      url: https://sv-punch-bot.onrender.com/slack/commands
+      description: 打卡系統指令
+      usage_hint: in | out | break | back | today | week | ooo | help
+      should_escape: false
+
+oauth_config:
+  redirect_urls:
+    - https://sv-punch-bot.onrender.com/oauth/callback
+  scopes:
+    bot:
+      - app_mentions:read
+      - channels:read
+      - chat:write
+      - commands
+      - groups:read
+      - im:read
+      - mpim:read
+      - team:read
+      - users:read
+      - users:read.email
+      - users:write
+
+settings:
+  event_subscriptions:
+    request_url: https://sv-punch-bot.onrender.com/slack/events
+    bot_events:
+      - app_home_opened
+      - team_join
+      - user_change
+  interactivity:
+    is_enabled: true
+    request_url: https://sv-punch-bot.onrender.com/slack/interactive
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

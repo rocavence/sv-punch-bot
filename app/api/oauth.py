@@ -12,9 +12,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/oauth", tags=["OAuth"])
 
-SLACK_CLIENT_ID = os.getenv("SLACK_CLIENT_ID")
-SLACK_CLIENT_SECRET = os.getenv("SLACK_CLIENT_SECRET")
-SLACK_REDIRECT_URI = os.getenv("SLACK_REDIRECT_URI", "https://your-app.onrender.com/oauth/callback")
+# These will be automatically set when using App Manifest
+SLACK_CLIENT_ID = os.getenv("SLACK_CLIENT_ID", "AUTO_GENERATED_BY_MANIFEST")
+SLACK_CLIENT_SECRET = os.getenv("SLACK_CLIENT_SECRET", "AUTO_GENERATED_BY_MANIFEST") 
+SLACK_REDIRECT_URI = os.getenv("SLACK_REDIRECT_URI", "https://sv-punch-bot.onrender.com/oauth/callback")
 
 # Slack OAuth scopes needed for the bot
 OAUTH_SCOPES = [
@@ -34,19 +35,10 @@ OAUTH_SCOPES = [
 @router.get("/install")
 async def install_slack_app():
     """
-    Generate Slack App installation URL for workspace admins
+    Show installation instructions for workspace admins
     """
-    if not SLACK_CLIENT_ID:
-        raise HTTPException(status_code=500, detail="Slack Client ID not configured")
-    
-    scopes = ",".join(OAUTH_SCOPES)
-    slack_oauth_url = (
-        f"https://slack.com/oauth/v2/authorize"
-        f"?client_id={SLACK_CLIENT_ID}"
-        f"&scope={scopes}"
-        f"&redirect_uri={SLACK_REDIRECT_URI}"
-        f"&state=install"
-    )
+    # Direct Slack App installation URL (will be generated after App Manifest is created)
+    slack_app_install_url = "https://slack.com/oauth/v2/authorize?client_id=YOUR_CLIENT_ID&scope=app_mentions:read,channels:read,chat:write,commands,groups:read,im:read,mpim:read,team:read,users:read,users:read.email,users:write&redirect_uri=https://sv-punch-bot.onrender.com/oauth/callback"
     
     install_html = f"""
     <!DOCTYPE html>
