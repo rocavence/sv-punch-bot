@@ -113,3 +113,93 @@ def get_work_days_in_range(start_date: date, end_date: date) -> int:
         current_date += timedelta(days=1)
     
     return work_days
+
+
+def convert_timezone(dt: datetime, from_timezone: str = "UTC", to_timezone: str = "Asia/Taipei") -> datetime:
+    """轉換時區"""
+    # 如果沒有時區信息，假設為來源時區
+    if dt.tzinfo is None:
+        from_tz = pytz.timezone(from_timezone)
+        dt = from_tz.localize(dt)
+    
+    # 轉換到目標時區
+    to_tz = get_user_timezone(to_timezone)
+    return dt.astimezone(to_tz)
+
+
+def get_user_timezone_datetime(user_timezone: str = "Asia/Taipei") -> datetime:
+    """獲取用戶時區當前時間 (別名函數)"""
+    return user_now(user_timezone)
+
+
+def create_user_datetime(dt: datetime, user_timezone: str = "Asia/Taipei") -> datetime:
+    """為用戶時區創建時間對象"""
+    return to_user_timezone(dt, user_timezone)
+
+
+def parse_datetime_with_timezone(datetime_str: str, user_timezone: str = "Asia/Taipei") -> Optional[datetime]:
+    """解析帶時區的日期時間字符串"""
+    try:
+        # 嘗試多種格式
+        formats_to_try = [
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+            "%Y-%m-%dT%H:%M:%S",
+            "%Y-%m-%dT%H:%M",
+        ]
+        
+        for fmt in formats_to_try:
+            try:
+                naive_dt = datetime.strptime(datetime_str, fmt)
+                # 添加用戶時區信息
+                user_tz = get_user_timezone(user_timezone)
+                return user_tz.localize(naive_dt)
+            except ValueError:
+                continue
+        
+        return None
+    except Exception:
+        return None
+
+
+def get_timezone_offset(timezone_str: str = "Asia/Taipei") -> timedelta:
+    """獲取時區相對於 UTC 的偏移量"""
+    try:
+        tz = get_user_timezone(timezone_str)
+        now = datetime.now()
+        utc_now = pytz.UTC.localize(now)
+        local_now = utc_now.astimezone(tz)
+        return local_now.utcoffset()
+    except:
+        return timedelta(hours=8)  # 預設為 UTC+8
+
+
+def is_business_hour(dt: datetime, timezone_str: str = "Asia/Taipei", 
+                    start_hour: int = 9, end_hour: int = 18) -> bool:
+    """判斷是否為營業時間"""
+    user_dt = to_user_timezone(dt, timezone_str)
+    hour = user_dt.hour
+    weekday = user_dt.weekday()
+    
+    # 週一到週五 + 在營業時間內
+    return weekday < 5 and start_hour <= hour < end_hour
+
+
+def round_to_minutes(dt: datetime, minutes: int = 15) -> datetime:
+    """將時間四捨五入到指定分鐘數"""
+    # 計算需要四捨五入的分鐘數
+    remainder = dt.minute % minutes
+    if remainder >= minutes // 2:
+        # 向上四捨五入
+        rounded_minutes = dt.minute + (minutes - remainder)
+    else:
+        # 向下四捨五入
+        rounded_minutes = dt.minute - remainder
+    
+    # 處理分鐘數溢出
+    if rounded_minutes >= 60:
+        dt = dt.replace(hour=dt.hour + 1, minute=0, second=0, microsecond=0)
+    else:
+        dt = dt.replace(minute=rounded_minutes, second=0, microsecond=0)
+    
+    return dt
