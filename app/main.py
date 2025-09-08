@@ -1,5 +1,5 @@
 """
-Main FastAPI application for Punch Bot
+Main FastAPI application for Punch Bot with Multi-Workspace Support
 """
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from slack_bolt.adapter.fastapi import SlackRequestHandler
 import os
 import logging
 from pathlib import Path
@@ -17,10 +18,13 @@ from app.database import engine, get_db
 from app.models import user, attendance, leave
 
 # Import API routes
-from app.api import auth, users as api_users, attendance as api_attendance, reports as api_reports
+from app.api import auth, users as api_users, attendance as api_attendance, reports as api_reports, oauth
 
-# Import web routes
+# Import web routes  
 from app.web.routes import dashboard, users, attendance as attendance_routes, reports
+
+# Import multi-workspace Slack bot
+from app.slack.multi_workspace_bot import get_multi_workspace_bot
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -154,6 +158,20 @@ async def root():
 # Include API routes
 from app.config import settings
 
+# Initialize multi-workspace Slack bot
+slack_bot = get_multi_workspace_bot()
+slack_app = slack_bot.start()
+
+# Create Slack request handler for FastAPI
+slack_handler = SlackRequestHandler(slack_app)
+
+# Include OAuth routes for Slack App installation
+app.include_router(
+    oauth.router,
+    prefix="",
+    tags=["oauth"]
+)
+
 app.include_router(
     auth.router,
     prefix=settings.API_PREFIX,
@@ -177,6 +195,17 @@ app.include_router(
     prefix=settings.API_PREFIX,
     tags=["reports-api"]
 )
+
+# Slack endpoints for events and commands
+@app.post("/slack/events")
+async def slack_events(req: Request):
+    """Handle Slack events"""
+    return await slack_handler.handle(req)
+
+@app.post("/slack/commands") 
+async def slack_commands(req: Request):
+    """Handle Slack slash commands"""
+    return await slack_handler.handle(req)
 
 # Include web routes
 app.include_router(
@@ -301,32 +330,41 @@ async def get_weekly_stats(db = next(get_db())):
 @app.on_event("startup")
 async def startup_event():
     """Initialize application on startup"""
-    logger.info("Starting Punch Bot Management System")
+    logger.info("Starting Multi-Workspace Punch Bot Management System")
     
     # Create database tables if they don't exist
     try:
-        from app.models.user import Base as UserBase
-        from app.models.attendance import Base as AttendanceBase
-        from app.models.leave import Base as LeaveBase
+        from app.database import Base
         
         # This will create tables if they don't exist
         # In production, use Alembic migrations instead
-        UserBase.metadata.create_all(bind=engine)
-        AttendanceBase.metadata.create_all(bind=engine)
-        LeaveBase.metadata.create_all(bind=engine)
+        Base.metadata.create_all(bind=engine)
         
         logger.info("Database tables initialized")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
     
-    # Initialize any background tasks
-    logger.info("Punch Bot Management System started successfully")
+    # Initialize multi-workspace bot
+    try:
+        logger.info("Multi-Workspace Slack Bot initialized and ready for installations")
+    except Exception as e:
+        logger.error(f"Failed to initialize Slack bot: {e}")
+    
+    logger.info("Multi-Workspace Punch Bot Management System started successfully")
 
 # Shutdown event
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on application shutdown"""
-    logger.info("Shutting down Punch Bot Management System")
+    logger.info("Shutting down Multi-Workspace Punch Bot Management System")
+    
+    # Stop multi-workspace bot
+    try:
+        from app.slack.multi_workspace_bot import stop_multi_workspace_bot
+        stop_multi_workspace_bot()
+        logger.info("Multi-workspace Slack bot stopped")
+    except Exception as e:
+        logger.error(f"Error stopping Slack bot: {e}")
 
 if __name__ == "__main__":
     import uvicorn
